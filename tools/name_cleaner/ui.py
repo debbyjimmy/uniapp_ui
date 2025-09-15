@@ -10,7 +10,11 @@ from datetime import datetime
 # Add the project root to Python path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
+from shared.auth import require_login
 from shared.gcp_utils import get_bucket_manager
+
+# Require login
+require_login()
 
 def main():
     st.title("🧹 Name Cleaner")
