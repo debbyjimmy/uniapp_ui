@@ -11,6 +11,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from shared.auth import require_login
 from shared.gcp_utils import get_bucket_manager
 
+# Require login
+require_login()
+
 # Page config
 st.set_page_config(
     page_title="Company Relationship Verifier - Automation Tools Hub",
@@ -19,8 +22,6 @@ st.set_page_config(
 )
 
 def main():
-    # Require login
-    require_login()
 
     st.title("🔗 Company Relationship Verifier")
     st.markdown("Verify relationships between companies using AI-powered analysis")

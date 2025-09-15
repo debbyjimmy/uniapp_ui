@@ -3,7 +3,7 @@ import os
 
 # Team login credentials - use environment variables or Streamlit secrets
 def get_team_credentials():
-    """Get team credentials from environment variables or Streamlit secrets"""
+    """Get team credentials from Streamlit secrets or environment variables"""
     try:
         import streamlit as st
         # Try Streamlit secrets first
@@ -13,10 +13,17 @@ def get_team_credentials():
         pass
     
     # Fallback to environment variables
-    return {
-        "username": os.getenv("TEAM_USERNAME", "team"),
-        "password": os.getenv("TEAM_PASSWORD", "12345")
-    }
+    username = os.getenv("TEAM_USERNAME")
+    password = os.getenv("TEAM_PASSWORD")
+    
+    if username and password:
+        return {
+            "username": username,
+            "password": password
+        }
+    
+    # No credentials found - user must configure them
+    raise ValueError("Team credentials not configured. Please set up Streamlit secrets or environment variables.")
 
 def get_api_keys():
     """Get API keys from Streamlit secrets"""

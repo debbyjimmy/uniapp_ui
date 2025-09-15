@@ -16,14 +16,19 @@ def check_login(username: str = None, password: str = None) -> bool:
     if username is None and password is None:
         return st.session_state.get('logged_in', False)
     
-    # Get current credentials (from env vars or secrets)
-    team_credentials = get_team_credentials()
-    
-    # Validate provided credentials
-    if username == team_credentials['username'] and password == team_credentials['password']:
-        return True
-    
-    return False
+    try:
+        # Get current credentials (from env vars or secrets)
+        team_credentials = get_team_credentials()
+        
+        # Validate provided credentials
+        if username == team_credentials['username'] and password == team_credentials['password']:
+            return True
+        
+        return False
+    except ValueError as e:
+        # Credentials not configured
+        st.error(f"🔐 {str(e)}")
+        return False
 
 def require_login():
     """
