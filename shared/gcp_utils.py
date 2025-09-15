@@ -43,9 +43,9 @@ class GCPBucketManager:
         if GCP_AVAILABLE:
             try:
                 # Optimized for Streamlit Cloud - try secrets first, then fallback
-                if st.secrets.get("GCP_CREDENTIALS"):
+                if hasattr(st.secrets, 'GCP_CREDENTIALS') and st.secrets.GCP_CREDENTIALS:
                     import json
-                    credentials_info = json.loads(st.secrets["GCP_CREDENTIALS"])
+                    credentials_info = json.loads(st.secrets.GCP_CREDENTIALS)
                     credentials = service_account.Credentials.from_service_account_info(credentials_info)
                     self.client = storage.Client(credentials=credentials, project=credentials_info.get("project_id"))
                     if st.session_state.get('show_gcp_status', True):
