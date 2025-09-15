@@ -1,0 +1,22 @@
+# Core Streamlit and web framework
+streamlit==1.28.0
+pandas==2.0.3
+numpy==1.24.3
+
+# Google Cloud Platform
+google-cloud-storage==2.10.0
+google-cloud-functions==1.13.0
+google-auth==2.23.0
+google-auth-oauthlib==1.1.0
+google-auth-httplib2==0.1.1
+
+# AI and ML libraries
+openai==0.28.1
+requests==2.31.0
+
+# Data processing
+python-dateutil==2.8.2
+pytz==2023.3
+
+# Utilities
+python-dotenv==1.0.0
