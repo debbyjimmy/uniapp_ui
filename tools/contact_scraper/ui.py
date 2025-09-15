@@ -61,12 +61,12 @@ def main():
     with col1:
         st.markdown("""
         **How it works:**
-        1. Upload LinkedIn CSV file
+        1. Upload contact CSV file
         2. File is split into chunks and processed in parallel
         3. Results are automatically merged and ready for download
         
         **Expected CSV format:**
-        - LinkedIn export CSV with contact information
+        - Contact export CSV with contact information
         - Will be automatically split into manageable chunks
         - Processing happens in parallel for faster results
         """)
