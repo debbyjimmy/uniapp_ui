@@ -9,6 +9,7 @@ import streamlit as st
 try:
     from google.cloud import storage
     from google.cloud.exceptions import NotFound
+    from google.oauth2 import service_account
     GCP_AVAILABLE = True
 except ImportError:
     GCP_AVAILABLE = False
