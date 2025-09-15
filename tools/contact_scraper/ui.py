@@ -14,17 +14,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from shared.auth import require_login
 from shared.gcp_utils import get_bucket_manager
 
-# Require login
-require_login()
-
-# Page config
-st.set_page_config(
-    page_title="Contact Scraper - Automation Tools Hub",
-    page_icon="💼",
-    layout="wide"
-)
-
 def main():
+    # Require login
+    require_login()
+    
     st.title("📇 Contact Scraper")
 
     # Back to dashboard button
