@@ -1,3 +1,0 @@
-[33mb90ee2d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m Fix GCP credentials access in Streamlit Cloud - use st.secrets.GCP_CREDENTIALS instead of st.secrets.get()
-[33m47a1aec[m[33m ([m[1;31morigin/master[m[33m)[m changed ui
-[33ma5d3c70[m removed st.set_page_config
