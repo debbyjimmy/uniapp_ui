@@ -3,6 +3,7 @@ import pandas as pd
 import time
 import sys
 import os
+import uuid
 
 # Add the project root to Python path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -204,9 +205,8 @@ def process_large_dataset_chunked(df, uploaded_file, chunk_size):
     
     st.info(f"🚀 Starting chunked processing: {total_chunks} chunks of {chunk_size} contacts each")
     
-    # Generate base session ID for all chunks
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
-    base_session_id = f"job_{timestamp}"
+    # Generate base session ID for all chunks (UUID-based like Contact Scraper)
+    base_session_id = str(uuid.uuid4())[:8]
     
     # Display base session ID prominently for copying
     st.markdown("---")
@@ -242,8 +242,8 @@ def process_large_dataset_chunked(df, uploaded_file, chunk_size):
             chunk_csv = chunk_df.to_csv(index=False)
             chunk_file = io.BytesIO(chunk_csv.encode('utf-8'))
             
-            # Upload chunk with consistent session ID
-            chunk_filename = f"chunk_{chunk_idx + 1}_{base_session_id}_{uploaded_file.name}"
+            # Upload chunk with simplified naming (like Contact Scraper)
+            chunk_filename = f"{base_session_id}_chunk{chunk_idx + 1}.csv"
             
             try:
                 job_id = bucket_manager.upload_input_file(chunk_file.getvalue(), chunk_filename)
@@ -253,8 +253,8 @@ def process_large_dataset_chunked(df, uploaded_file, chunk_size):
                     chunk_completed = wait_for_chunk_completion(job_id, bucket_manager, chunk_idx + 1, total_chunks)
                     
                     if chunk_completed:
-                        # Download chunk results using the chunk filename
-                        chunk_results_filename = f"chunk_{chunk_idx + 1}_{base_session_id}_{uploaded_file.name}"
+                        # Download chunk results using the simplified chunk filename
+                        chunk_results_filename = f"{base_session_id}_chunk{chunk_idx + 1}.csv"
                         chunk_results = bucket_manager.download_results_by_filename(chunk_results_filename)
                         if chunk_results:
                             chunk_df_results = pd.read_csv(pd.io.common.BytesIO(chunk_results))
@@ -283,16 +283,14 @@ def process_large_dataset_chunked(df, uploaded_file, chunk_size):
             combined_results = pd.concat(all_results, ignore_index=True)
             
             # Save combined results with base session ID
-            combined_filename = f"combined_results_{base_session_id}_{uploaded_file.name}"
+            combined_filename = f"{base_session_id}_combined_results.csv"
             
-            # Upload combined results
-            combined_csv = combined_results.to_csv(index=False)
-            combined_job_id = bucket_manager.upload_input_file(
-                combined_csv.encode('utf-8'), 
-                combined_filename
-            )
-            
-            if combined_job_id:
+            # Upload combined results directly to results folder (like Contact Scraper)
+            try:
+                combined_csv = combined_results.to_csv(index=False)
+                blob = bucket_manager.bucket.blob(f"results/{combined_filename}")
+                blob.upload_from_string(combined_csv, content_type="text/csv")
+                
                 st.success(f"✅ Chunked processing completed! {successful_chunks}/{total_chunks} chunks successful")
                 
                 # Display base session ID prominently for copying
@@ -301,10 +299,18 @@ def process_large_dataset_chunked(df, uploaded_file, chunk_size):
                 st.code(base_session_id, language="text")
                 st.info("💡 Copy the Session ID above to download results later or share with others")
                 
+                # Provide download button for combined results
+                st.download_button(
+                    "⬇️ Download Combined Results",
+                    combined_csv,
+                    file_name=combined_filename,
+                    mime="text/csv"
+                )
+                
                 st.session_state.current_job_id = base_session_id
                 st.rerun()
-            else:
-                st.error("❌ Failed to save combined results")
+            except Exception as e:
+                st.error(f"❌ Failed to save combined results: {e}")
         else:
             st.error("❌ No chunks processed successfully")
             
