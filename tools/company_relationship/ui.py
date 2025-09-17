@@ -228,6 +228,16 @@ def process_large_dataset_chunked(df, uploaded_file, chunk_size, bucket_manager)
     
     st.info(f"🚀 Starting chunked processing: {total_chunks} chunks of {chunk_size} companies each")
     
+    # Generate and display session ID immediately
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    session_id = f"chunked_{timestamp}_{uploaded_file.name}"
+    
+    # Display session ID prominently for copying
+    st.markdown("---")
+    st.subheader("📋 Session ID")
+    st.code(session_id, language="text")
+    st.info("💡 Copy the Session ID above to track progress or download results later")
+    
     # Create progress bar
     progress_bar = st.progress(0)
     status_text = st.empty()
