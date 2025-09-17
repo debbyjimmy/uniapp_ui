@@ -228,14 +228,14 @@ def process_large_dataset_chunked(df, uploaded_file, chunk_size, bucket_manager)
     
     st.info(f"🚀 Starting chunked processing: {total_chunks} chunks of {chunk_size} companies each")
     
-    # Generate and display session ID immediately
+    # Generate base session ID for all chunks
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    session_id = f"chunked_{timestamp}_{uploaded_file.name}"
+    base_session_id = f"job_{timestamp}"
     
-    # Display session ID prominently for copying
+    # Display base session ID prominently for copying
     st.markdown("---")
     st.subheader("📋 Session ID")
-    st.code(session_id, language="text")
+    st.code(base_session_id, language="text")
     st.info("💡 Copy the Session ID above to track progress or download results later")
     
     # Create progress bar
@@ -264,9 +264,8 @@ def process_large_dataset_chunked(df, uploaded_file, chunk_size, bucket_manager)
             chunk_csv = chunk_df.to_csv(index=False)
             chunk_file = io.BytesIO(chunk_csv.encode('utf-8'))
             
-            # Upload chunk
-            timestamp = time.strftime("%Y%m%d_%H%M%S")
-            chunk_filename = f"chunk_{chunk_idx + 1}_{timestamp}_{uploaded_file.name}"
+            # Upload chunk with consistent session ID
+            chunk_filename = f"chunk_{chunk_idx + 1}_{base_session_id}_{uploaded_file.name}"
             
             try:
                 job_id = bucket_manager.upload_input_file(chunk_file.getvalue(), chunk_filename)
@@ -276,8 +275,9 @@ def process_large_dataset_chunked(df, uploaded_file, chunk_size, bucket_manager)
                     chunk_completed = wait_for_chunk_completion(job_id, bucket_manager, chunk_idx + 1, total_chunks)
                     
                     if chunk_completed:
-                        # Download chunk results
-                        chunk_results = bucket_manager.download_results(job_id)
+                        # Download chunk results using the chunk filename
+                        chunk_results_filename = f"chunk_{chunk_idx + 1}_{base_session_id}_{uploaded_file.name}"
+                        chunk_results = bucket_manager.download_results_by_filename(chunk_results_filename)
                         if chunk_results:
                             chunk_df_results = pd.read_csv(pd.io.common.BytesIO(chunk_results))
                             all_results.append(chunk_df_results)
@@ -304,9 +304,8 @@ def process_large_dataset_chunked(df, uploaded_file, chunk_size, bucket_manager)
         if all_results:
             combined_results = pd.concat(all_results, ignore_index=True)
             
-            # Save combined results
-            timestamp = time.strftime("%Y%m%d_%H%M%S")
-            combined_filename = f"combined_results_{timestamp}_{uploaded_file.name}"
+            # Save combined results with base session ID
+            combined_filename = f"combined_results_{base_session_id}_{uploaded_file.name}"
             
             # Upload combined results
             combined_csv = combined_results.to_csv(index=False)
@@ -318,13 +317,13 @@ def process_large_dataset_chunked(df, uploaded_file, chunk_size, bucket_manager)
             if combined_job_id:
                 st.success(f"✅ Chunked processing completed! {successful_chunks}/{total_chunks} chunks successful")
                 
-                # Display job ID prominently for copying
+                # Display base session ID prominently for copying
                 st.markdown("---")
-                st.subheader("📋 Job ID")
-                st.code(combined_job_id, language="text")
-                st.info("💡 Copy the Job ID above to download results later or share with others")
+                st.subheader("📋 Session ID")
+                st.code(base_session_id, language="text")
+                st.info("💡 Copy the Session ID above to download results later or share with others")
                 
-                st.session_state.current_job_id = combined_job_id
+                st.session_state.current_job_id = base_session_id
                 st.rerun()
             else:
                 st.error("❌ Failed to save combined results")

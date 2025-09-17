@@ -154,7 +154,37 @@ class GCPBucketManager:
             return None
         
         try:
+            # First try the standard format: job_id_results.csv
             results_blob_name = f"{self.results_folder}/{job_id}_results.csv"
+            blob = self.bucket.blob(results_blob_name)
+            
+            if blob.exists():
+                return blob.download_as_bytes()
+            
+            # If not found, try to find chunk results with this job_id as base
+            # Look for files that start with chunk_ and contain the job_id
+            blobs = self.bucket.list_blobs(prefix=f"{self.results_folder}/chunk_")
+            
+            for blob in blobs:
+                if job_id in blob.name and blob.name.endswith("_results.csv"):
+                    return blob.download_as_bytes()
+            
+            st.warning(f"Results file not found: {results_blob_name}")
+            return None
+            
+        except Exception as e:
+            st.error(f"Download failed: {e}")
+            return None
+    
+    def download_results_by_filename(self, filename: str) -> Optional[bytes]:
+        """Download results file by exact filename"""
+        if not self.client:
+            st.error("GCP not available")
+            return None
+        
+        try:
+            # Construct the results filename
+            results_blob_name = f"{self.results_folder}/{filename.replace('.csv', '_results.csv')}"
             blob = self.bucket.blob(results_blob_name)
             
             if not blob.exists():
