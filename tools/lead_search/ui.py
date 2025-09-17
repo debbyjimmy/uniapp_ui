@@ -107,9 +107,30 @@ def main():
             with st.expander("📋 Data Preview"):
                 st.dataframe(df.head(), use_container_width=True)
             
+            # Show dataset size and chunking info
+            total_rows = len(df)
+            st.info(f"📊 Dataset size: **{total_rows} contacts**")
+            
+            # Chunking options for large datasets
+            chunk_size = 50  # Default chunk size
+            if total_rows > 100:
+                st.warning("⚠️ Large dataset detected! Processing will be done in chunks to avoid timeouts.")
+                chunk_size = st.selectbox(
+                    "Chunk size (contacts per batch):",
+                    [25, 50, 75, 100],
+                    index=1,
+                    help="Smaller chunks are more reliable but take longer overall"
+                )
+                st.info(f"📦 Will process {total_rows} contacts in {(total_rows + chunk_size - 1) // chunk_size} chunks of {chunk_size} contacts each")
+            
             # Upload button
             if st.button("🚀 Start Contact Validation", type="primary"):
-                process_file(uploaded_file, df)
+                if total_rows > 100:
+                    # Process in chunks
+                    process_large_dataset_chunked(df, uploaded_file, chunk_size)
+                else:
+                    # Process normally for small datasets
+                    process_small_dataset(df, uploaded_file)
                 
         except Exception as e:
             st.error(f"❌ Error reading file: {e}")
@@ -145,8 +166,8 @@ def main():
         st.subheader("📊 Job Status")
         monitor_job(st.session_state.current_job_id)
 
-def process_file(uploaded_file, df):
-    """Process uploaded file and upload to GCP"""
+def process_small_dataset(df, uploaded_file):
+    """Process small datasets normally (original behavior)"""
     try:
         # Get bucket manager
         bucket_manager = get_bucket_manager('lead_search')
@@ -168,6 +189,136 @@ def process_file(uploaded_file, df):
             
     except Exception as e:
         st.error(f"❌ Error processing file: {e}")
+
+def process_large_dataset_chunked(df, uploaded_file, chunk_size):
+    """Process large datasets in chunks with progress tracking"""
+    total_rows = len(df)
+    total_chunks = (total_rows + chunk_size - 1) // chunk_size
+    
+    st.info(f"🚀 Starting chunked processing: {total_chunks} chunks of {chunk_size} contacts each")
+    
+    # Create progress bar
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    all_results = []
+    successful_chunks = 0
+    failed_chunks = 0
+    
+    try:
+        bucket_manager = get_bucket_manager('lead_search')
+        
+        for chunk_idx in range(total_chunks):
+            start_idx = chunk_idx * chunk_size
+            end_idx = min(start_idx + chunk_size, total_rows)
+            
+            # Update progress
+            progress = (chunk_idx + 1) / total_chunks
+            progress_bar.progress(progress)
+            status_text.text(f"Processing chunk {chunk_idx + 1}/{total_chunks} (contacts {start_idx + 1}-{end_idx})")
+            
+            # Extract chunk
+            chunk_df = df.iloc[start_idx:end_idx].copy()
+            
+            # Create temporary file for chunk
+            import io
+            chunk_csv = chunk_df.to_csv(index=False)
+            chunk_file = io.BytesIO(chunk_csv.encode('utf-8'))
+            
+            # Upload chunk
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            chunk_filename = f"chunk_{chunk_idx + 1}_{timestamp}_{uploaded_file.name}"
+            
+            try:
+                job_id = bucket_manager.upload_input_file(chunk_file.getvalue(), chunk_filename)
+                
+                if job_id:
+                    # Wait for chunk to complete
+                    chunk_completed = wait_for_chunk_completion(job_id, bucket_manager, chunk_idx + 1, total_chunks)
+                    
+                    if chunk_completed:
+                        # Download chunk results
+                        chunk_results = bucket_manager.download_results(job_id)
+                        if chunk_results:
+                            chunk_df_results = pd.read_csv(pd.io.common.BytesIO(chunk_results))
+                            all_results.append(chunk_df_results)
+                            successful_chunks += 1
+                        else:
+                            st.warning(f"⚠️ Chunk {chunk_idx + 1} completed but no results found")
+                            failed_chunks += 1
+                    else:
+                        st.warning(f"⚠️ Chunk {chunk_idx + 1} failed or timed out")
+                        failed_chunks += 1
+                else:
+                    st.warning(f"⚠️ Chunk {chunk_idx + 1} upload failed")
+                    failed_chunks += 1
+                    
+            except Exception as e:
+                st.warning(f"⚠️ Chunk {chunk_idx + 1} error: {e}")
+                failed_chunks += 1
+        
+        # Final progress update
+        progress_bar.progress(1.0)
+        status_text.text("Processing complete!")
+        
+        # Combine results
+        if all_results:
+            combined_results = pd.concat(all_results, ignore_index=True)
+            
+            # Save combined results
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            combined_filename = f"combined_results_{timestamp}_{uploaded_file.name}"
+            
+            # Upload combined results
+            combined_csv = combined_results.to_csv(index=False)
+            combined_job_id = bucket_manager.upload_input_file(
+                combined_csv.encode('utf-8'), 
+                combined_filename
+            )
+            
+            if combined_job_id:
+                st.success(f"✅ Chunked processing completed! {successful_chunks}/{total_chunks} chunks successful")
+                st.session_state.current_job_id = combined_job_id
+                st.rerun()
+            else:
+                st.error("❌ Failed to save combined results")
+        else:
+            st.error("❌ No chunks processed successfully")
+            
+    except Exception as e:
+        st.error(f"❌ Chunked processing failed: {e}")
+    finally:
+        # Clear progress indicators
+        progress_bar.empty()
+        status_text.empty()
+
+def wait_for_chunk_completion(job_id, bucket_manager, chunk_num, total_chunks, max_wait_time=300):
+    """Wait for a chunk to complete with timeout"""
+    start_time = time.time()
+    
+    while time.time() - start_time < max_wait_time:
+        try:
+            status = bucket_manager.check_job_status(job_id)
+            current_status = status.get('status', 'unknown')
+            
+            if current_status == 'completed':
+                return True
+            elif current_status in ['failed', 'timeout']:
+                return False
+            elif current_status in ['pending', 'processing']:
+                # Still processing, wait a bit more
+                time.sleep(5)
+            else:
+                # Unknown status, wait a bit more
+                time.sleep(5)
+                
+        except Exception as e:
+            st.warning(f"⚠️ Error checking chunk {chunk_num} status: {e}")
+            time.sleep(5)
+    
+    # Timeout reached
+    st.warning(f"⚠️ Chunk {chunk_num} timed out after {max_wait_time} seconds")
+    return False
 
 def monitor_job(job_id: str):
     """Monitor job progress and show results"""
