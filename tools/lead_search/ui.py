@@ -180,8 +180,15 @@ def process_small_dataset(df, uploaded_file):
             job_id = bucket_manager.upload_input_file(file_data, uploaded_file.name)
         
         if job_id:
+            st.success(f"✅ Contact list uploaded successfully!")
+            
+            # Display job ID prominently for copying
+            st.markdown("---")
+            st.subheader("📋 Job ID")
+            st.code(job_id, language="text")
+            st.info("💡 Copy the Job ID above to download results later or share with others")
+            
             st.session_state.current_job_id = job_id
-            st.success(f"✅ Contact list uploaded successfully! Job ID: {job_id}")
             st.info("🔄 AI validation will start automatically. Monitor progress below.")
             st.rerun()
         else:
@@ -278,6 +285,13 @@ def process_large_dataset_chunked(df, uploaded_file, chunk_size):
             
             if combined_job_id:
                 st.success(f"✅ Chunked processing completed! {successful_chunks}/{total_chunks} chunks successful")
+                
+                # Display job ID prominently for copying
+                st.markdown("---")
+                st.subheader("📋 Job ID")
+                st.code(combined_job_id, language="text")
+                st.info("💡 Copy the Job ID above to download results later or share with others")
+                
                 st.session_state.current_job_id = combined_job_id
                 st.rerun()
             else:

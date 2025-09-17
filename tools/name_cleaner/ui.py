@@ -350,7 +350,14 @@ def process_small_dataset(df, uploaded_file, bucket_manager):
         job_id = bucket_manager.upload_input_file(file_data, filename)
         
         if job_id:
-            st.success(f"✅ File uploaded successfully! Job ID: {job_id}")
+            st.success(f"✅ File uploaded successfully!")
+            
+            # Display job ID prominently for copying
+            st.markdown("---")
+            st.subheader("📋 Job ID")
+            st.code(job_id, language="text")
+            st.info("💡 Copy the Job ID above to download results later or share with others")
+            
             # Store job ID in session state
             st.session_state.current_job_id = job_id
             st.rerun()
@@ -446,6 +453,13 @@ def process_large_dataset_chunked(df, uploaded_file, chunk_size, bucket_manager)
             
             if combined_job_id:
                 st.success(f"✅ Chunked processing completed! {successful_chunks}/{total_chunks} chunks successful")
+                
+                # Display job ID prominently for copying
+                st.markdown("---")
+                st.subheader("📋 Job ID")
+                st.code(combined_job_id, language="text")
+                st.info("💡 Copy the Job ID above to download results later or share with others")
+                
                 st.session_state.current_job_id = combined_job_id
                 st.rerun()
             else:
