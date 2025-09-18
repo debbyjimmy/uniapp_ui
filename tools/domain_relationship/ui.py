@@ -52,6 +52,12 @@ def main():
     
     st.markdown("---")
     
+    # Job monitoring section
+    if 'current_job_id' in st.session_state:
+        st.markdown("---")
+        st.subheader("📊 Job Status")
+        monitor_job(st.session_state.current_job_id)
+    
     # Tool description
     col1, col2 = st.columns([2, 1])
     with col1:
@@ -299,6 +305,77 @@ def wait_for_chunk_completion(job_id, bucket_manager, chunk_num, total_chunks, m
     
     st.warning(f"⏰ Chunk {chunk_num} timed out after {max_wait_time} seconds")
     return False
+
+def monitor_job(job_id: str):
+    """Monitor job progress and show results"""
+    try:
+        bucket_manager = get_bucket_manager('domain_relationship')
+        
+        # Check current status
+        status = bucket_manager.check_job_status(job_id)
+        
+        # Display status
+        status_emoji = {
+            'pending': '⏳',
+            'processing': '🔄',
+            'completed': '✅',
+            'failed': '❌',
+            'timeout': '⏰'
+        }
+        
+        current_status = status.get('status', 'unknown')
+        emoji = status_emoji.get(current_status, '❓')
+        
+        st.markdown(f"**Job ID:** {job_id}")
+        st.markdown(f"**Status:** {emoji} {current_status.title()}")
+        
+        if 'timestamp' in status:
+            st.markdown(f"**Started:** {status['timestamp']}")
+        
+        # Handle different statuses
+        if current_status == 'pending':
+            st.info("⏳ File uploaded and waiting to be processed...")
+            
+        elif current_status == 'processing':
+            st.info("🔄 Domain relationship analysis in progress...")
+            
+        elif current_status == 'completed':
+            st.success("✅ Domain relationship analysis completed! Results are ready.")
+            
+            # Download results
+            if st.button("⬇️ Download Results"):
+                download_results(job_id, bucket_manager)
+                
+        elif current_status == 'failed':
+            st.error(f"❌ Processing failed: {status.get('error', 'Unknown error')}")
+            
+        elif current_status == 'timeout':
+            st.warning("⏰ Job took too long to complete. Please check GCP logs.")
+        
+        # Auto-refresh
+        if current_status in ['pending', 'processing']:
+            time.sleep(2)
+            st.rerun()
+            
+    except Exception as e:
+        st.error(f"❌ Error monitoring job: {e}")
+
+def download_results(job_id: str, bucket_manager):
+    """Download and display results"""
+    try:
+        results = bucket_manager.download_results(job_id)
+        if results:
+            st.success("✅ Results downloaded successfully!")
+            st.download_button(
+                "⬇️ Download Results File",
+                results,
+                file_name=f"domain_relationship_results_{job_id}.csv",
+                mime="text/csv"
+            )
+        else:
+            st.warning("⚠️ No results found for this job ID")
+    except Exception as e:
+        st.error(f"❌ Error downloading results: {e}")
 
 def check_session_results(lookup_id, bucket_manager):
     """Check and display results for a specific session ID"""
