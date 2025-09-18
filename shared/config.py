@@ -108,6 +108,15 @@ TOOLS_CONFIG = {
         "input_folder": "input",
         "results_folder": "results",
         "status_folder": "status"
+    },
+    "domain_relationship": {
+        "name": "Domain Relationship Analyzer",
+        "icon": "🌐",
+        "description": "Analyze relationships between domains and companies",
+        "bucket": "domain-relationship",
+        "input_folder": "input",
+        "results_folder": "results",
+        "status_folder": "status"
     }
 }
 

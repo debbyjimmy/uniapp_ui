@@ -291,6 +291,9 @@ def show_tool_page():
     elif selected_tool == 'name_cleaner':
         from tools.name_cleaner.ui import main as name_cleaner_main
         name_cleaner_main()
+    elif selected_tool == 'domain_relationship':
+        from tools.domain_relationship.ui import main as domain_relationship_main
+        domain_relationship_main()
     else:
         st.markdown("""
         <div style="text-align: center; padding: 3rem; background: var(--light-bg); border-radius: 15px; margin: 2rem 0;">
