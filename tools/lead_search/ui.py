@@ -406,11 +406,49 @@ def monitor_job(job_id: str):
     except Exception as e:
         st.error(f"❌ Error monitoring job: {e}")
 
+def download_and_combine_chunk_results(job_id: str, bucket_manager):
+    """Download and combine results from multiple chunk files"""
+    try:
+        # List all chunk result files for this job
+        chunk_files = bucket_manager.list_files(f"results/{job_id}_chunk_*_results.csv")
+        
+        if not chunk_files:
+            return None
+            
+        # Download and combine all chunk results
+        all_results = []
+        for chunk_file in sorted(chunk_files):  # Sort to maintain order
+            chunk_data = bucket_manager.download_file(chunk_file)
+            if chunk_data:
+                chunk_df = pd.read_csv(pd.io.common.BytesIO(chunk_data))
+                all_results.append(chunk_df)
+        
+        if all_results:
+            # Combine all chunk results
+            combined_df = pd.concat(all_results, ignore_index=True)
+            
+            # Convert back to CSV bytes
+            csv_buffer = pd.io.common.BytesIO()
+            combined_df.to_csv(csv_buffer, index=False)
+            return csv_buffer.getvalue()
+        
+        return None
+        
+    except Exception as e:
+        st.error(f"❌ Error combining chunk results: {e}")
+        return None
+
 def download_results(job_id: str, bucket_manager):
     """Download and display results"""
     try:
         with st.spinner("⬇️ Downloading validation results..."):
+            # Try to download combined results first, then fall back to chunk results
             results_data = bucket_manager.download_results(job_id)
+            
+            if not results_data:
+                # Try to download chunk results and combine them
+                st.info("🔄 Combining results from multiple chunks...")
+                results_data = download_and_combine_chunk_results(job_id, bucket_manager)
         
         if results_data:
             # Convert to DataFrame
