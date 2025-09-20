@@ -108,30 +108,9 @@ def main():
             with st.expander("📋 Data Preview"):
                 st.dataframe(df.head(), use_container_width=True)
             
-            # Show dataset size and chunking info
-            total_rows = len(df)
-            st.info(f"📊 Dataset size: **{total_rows} contacts**")
-            
-            # Chunking options for large datasets
-            chunk_size = 50  # Default chunk size
-            if total_rows > 100:
-                st.warning("⚠️ Large dataset detected! Processing will be done in chunks to avoid timeouts.")
-                chunk_size = st.selectbox(
-                    "Chunk size (contacts per batch):",
-                    [25, 50, 75, 100],
-                    index=1,
-                    help="Smaller chunks are more reliable but take longer overall"
-                )
-                st.info(f"📦 Will process {total_rows} contacts in {(total_rows + chunk_size - 1) // chunk_size} chunks of {chunk_size} contacts each")
-            
             # Upload button
             if st.button("🚀 Start Contact Validation", type="primary"):
-                if total_rows > 100:
-                    # Process in chunks
-                    process_large_dataset_chunked(df, uploaded_file, chunk_size)
-                else:
-                    # Process normally for small datasets
-                    process_small_dataset(df, uploaded_file)
+                process_file(uploaded_file, df)
                 
         except Exception as e:
             st.error(f"❌ Error reading file: {e}")
@@ -190,6 +169,30 @@ def process_small_dataset(df, uploaded_file):
             st.info("💡 Copy the Job ID above to download results later or share with others")
             
             st.session_state.current_job_id = job_id
+            st.info("🔄 AI validation will start automatically. Monitor progress below.")
+            st.rerun()
+        else:
+            st.error("❌ Upload failed. Please try again.")
+            
+    except Exception as e:
+        st.error(f"❌ Error processing file: {e}")
+
+def process_file(uploaded_file, df):
+    """Process uploaded file and upload to GCP"""
+    try:
+        # Get bucket manager
+        bucket_manager = get_bucket_manager('lead_search')
+        
+        # Upload file
+        with st.spinner("📤 Uploading contact list to GCP..."):
+            # Reset file pointer to beginning
+            uploaded_file.seek(0)
+            file_data = uploaded_file.read()
+            job_id = bucket_manager.upload_input_file(file_data, uploaded_file.name)
+        
+        if job_id:
+            st.session_state.current_job_id = job_id
+            st.success(f"✅ Contact list uploaded successfully! Job ID: {job_id}")
             st.info("🔄 AI validation will start automatically. Monitor progress below.")
             st.rerun()
         else:
@@ -379,6 +382,8 @@ def monitor_job(job_id: str):
             
         elif current_status == 'processing':
             st.info("🔄 AI contact validation in progress...")
+            if 'message' in status:
+                st.write(f"**Progress:** {status['message']}")
             
         elif current_status == 'completed':
             st.success("✅ Contact validation completed! Results are ready.")
