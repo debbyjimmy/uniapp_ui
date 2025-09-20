@@ -246,28 +246,26 @@ def process_large_dataset_chunked(df, uploaded_file, chunk_size):
             chunk_filename = f"{base_session_id}_chunk{chunk_idx + 1}.csv"
             
             try:
-                job_id = bucket_manager.upload_input_file(chunk_file.getvalue(), chunk_filename)
+                # Upload chunk directly to bucket with correct naming
+                blob = bucket_manager.bucket.blob(f"input/{chunk_filename}")
+                blob.upload_from_string(chunk_csv, content_type="text/csv")
                 
-                if job_id:
-                    # Wait for chunk to complete
-                    chunk_completed = wait_for_chunk_completion(job_id, bucket_manager, chunk_idx + 1, total_chunks)
-                    
-                    if chunk_completed:
-                        # Download chunk results using the simplified chunk filename
-                        chunk_results_filename = f"{base_session_id}_chunk{chunk_idx + 1}.csv"
-                        chunk_results = bucket_manager.download_results_by_filename(chunk_results_filename)
-                        if chunk_results:
-                            chunk_df_results = pd.read_csv(pd.io.common.BytesIO(chunk_results))
-                            all_results.append(chunk_df_results)
-                            successful_chunks += 1
-                        else:
-                            st.warning(f"⚠️ Chunk {chunk_idx + 1} completed but no results found")
-                            failed_chunks += 1
+                # Wait for chunk to complete using base_session_id as job_id
+                chunk_completed = wait_for_chunk_completion(base_session_id, bucket_manager, chunk_idx + 1, total_chunks)
+                
+                if chunk_completed:
+                    # Download chunk results using the simplified chunk filename
+                    chunk_results_filename = f"{base_session_id}_chunk{chunk_idx + 1}.csv"
+                    chunk_results = bucket_manager.download_results_by_filename(chunk_results_filename)
+                    if chunk_results:
+                        chunk_df_results = pd.read_csv(pd.io.common.BytesIO(chunk_results))
+                        all_results.append(chunk_df_results)
+                        successful_chunks += 1
+                        st.success(f"✅ Chunk {chunk_idx + 1}/{total_chunks} completed successfully")
                     else:
-                        st.warning(f"⚠️ Chunk {chunk_idx + 1} failed or timed out")
-                        failed_chunks += 1
+                        st.warning(f"⚠️ Chunk {chunk_idx + 1}/{total_chunks} completed but no results found")
                 else:
-                    st.warning(f"⚠️ Chunk {chunk_idx + 1} upload failed")
+                    st.error(f"❌ Chunk {chunk_idx + 1}/{total_chunks} failed or timed out")
                     failed_chunks += 1
                     
             except Exception as e:
