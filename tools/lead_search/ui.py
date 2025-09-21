@@ -410,12 +410,12 @@ def download_and_combine_chunk_results(job_id: str, bucket_manager):
     """Download and combine results from multiple chunk files"""
     try:
         # List all chunk result files for this job
-        # The pattern should be: job_id_chunk_*_results.csv
-        # For example: job_20250921_220554_chunk_1_results.csv
-        chunk_files = bucket_manager.list_files(f"results/{job_id}_chunk_*_results.csv")
+        # Use prefix matching: results/{job_id}_chunk_ (without the wildcard)
+        # This will match: job_20250921_220554_chunk_1_results.csv, job_20250921_220554_chunk_2_results.csv, etc.
+        chunk_files = bucket_manager.list_files(f"results/{job_id}_chunk_")
         
         # Debug: Show what files were found
-        st.info(f"🔍 Looking for chunk files with pattern: results/{job_id}_chunk_*_results.csv")
+        st.info(f"🔍 Looking for chunk files with prefix: results/{job_id}_chunk_")
         st.info(f"📁 Found {len(chunk_files)} chunk files: {chunk_files}")
         
         if not chunk_files:
