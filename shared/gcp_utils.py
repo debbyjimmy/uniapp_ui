@@ -216,6 +216,32 @@ class GCPBucketManager:
             st.error(f"Failed to convert results to DataFrame: {e}")
             return None
     
+    def list_files(self, prefix: str) -> List[str]:
+        """List files in bucket with given prefix"""
+        if not self.client:
+            return []
+        
+        try:
+            blobs = self.bucket.list_blobs(prefix=prefix)
+            return [blob.name for blob in blobs]
+        except Exception as e:
+            st.error(f"Failed to list files: {e}")
+            return []
+    
+    def download_file(self, file_path: str) -> Optional[bytes]:
+        """Download a specific file from the bucket"""
+        if not self.client:
+            return None
+        
+        try:
+            blob = self.bucket.blob(file_path)
+            if blob.exists():
+                return blob.download_as_bytes()
+            return None
+        except Exception as e:
+            st.error(f"Failed to download file {file_path}: {e}")
+            return None
+
     def monitor_job_progress(self, job_id: str) -> Dict:
         """Monitor job progress with polling"""
         start_time = time.time()
