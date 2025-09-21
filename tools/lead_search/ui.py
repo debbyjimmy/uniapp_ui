@@ -419,7 +419,10 @@ def download_and_combine_chunk_results(job_id: str, bucket_manager):
         st.info(f"📁 Found {len(chunk_files)} chunk files: {chunk_files}")
         
         if not chunk_files:
-            print(f"DEBUG: No chunk files found for job_id: {job_id}")
+            st.warning(f"⚠️ No chunk files found for job_id: {job_id}")
+            # Let's also check what files are actually in the results folder
+            all_files = bucket_manager.list_files("results/")
+            st.info(f"📁 All files in results folder: {all_files}")
             return None
             
         # Download and combine all chunk results
@@ -453,10 +456,15 @@ def download_results(job_id: str, bucket_manager):
             st.info(f"🔍 Looking for single results file: {job_id}_results.csv")
             results_data = bucket_manager.download_results(job_id)
             
+            st.info(f"📊 download_results returned: {type(results_data)} - {results_data is not None}")
+            
             if not results_data:
                 # Try to download chunk results and combine them
                 st.info("🔄 Single results file not found. Looking for chunk results...")
                 results_data = download_and_combine_chunk_results(job_id, bucket_manager)
+                st.info(f"📊 download_and_combine_chunk_results returned: {type(results_data)} - {results_data is not None}")
+            else:
+                st.info("✅ Found single results file")
         
         if results_data:
             # Convert to DataFrame
