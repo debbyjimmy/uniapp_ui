@@ -161,13 +161,8 @@ class GCPBucketManager:
             if blob.exists():
                 return blob.download_as_bytes()
             
-            # If not found, try to find chunk results with this job_id as base
-            # Look for files that start with chunk_ and contain the job_id
-            blobs = self.bucket.list_blobs(prefix=f"{self.results_folder}/chunk_")
-            
-            for blob in blobs:
-                if job_id in blob.name and blob.name.endswith("_results.csv"):
-                    return blob.download_as_bytes()
+            # If not found, return None so that download_and_combine_chunk_results can be called
+            # The download_and_combine_chunk_results function will handle chunk files
             
             st.warning(f"Results file not found: {results_blob_name}")
             return None

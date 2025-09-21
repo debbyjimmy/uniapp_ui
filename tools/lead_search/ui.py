@@ -415,8 +415,8 @@ def download_and_combine_chunk_results(job_id: str, bucket_manager):
         chunk_files = bucket_manager.list_files(f"results/{job_id}_chunk_*_results.csv")
         
         # Debug: Show what files were found
-        print(f"DEBUG: Looking for chunk files with pattern: results/{job_id}_chunk_*_results.csv")
-        print(f"DEBUG: Found {len(chunk_files)} chunk files: {chunk_files}")
+        st.info(f"🔍 Looking for chunk files with pattern: results/{job_id}_chunk_*_results.csv")
+        st.info(f"📁 Found {len(chunk_files)} chunk files: {chunk_files}")
         
         if not chunk_files:
             print(f"DEBUG: No chunk files found for job_id: {job_id}")
@@ -450,11 +450,12 @@ def download_results(job_id: str, bucket_manager):
     try:
         with st.spinner("⬇️ Downloading validation results..."):
             # Try to download combined results first, then fall back to chunk results
+            st.info(f"🔍 Looking for single results file: {job_id}_results.csv")
             results_data = bucket_manager.download_results(job_id)
             
             if not results_data:
                 # Try to download chunk results and combine them
-                st.info("🔄 Combining results from multiple chunks...")
+                st.info("🔄 Single results file not found. Looking for chunk results...")
                 results_data = download_and_combine_chunk_results(job_id, bucket_manager)
         
         if results_data:
