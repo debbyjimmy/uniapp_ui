@@ -158,12 +158,17 @@ class GCPBucketManager:
             results_blob_name = f"{self.results_folder}/{job_id}_results.csv"
             blob = self.bucket.blob(results_blob_name)
             
+            print(f"DEBUG: Checking for single results file: {results_blob_name}")
+            print(f"DEBUG: Blob exists: {blob.exists()}")
+            
             if blob.exists():
+                print(f"DEBUG: Found single results file, downloading...")
                 return blob.download_as_bytes()
             
             # If not found, return None so that download_and_combine_chunk_results can be called
             # The download_and_combine_chunk_results function will handle chunk files
             
+            print(f"DEBUG: Single results file not found, returning None")
             st.warning(f"Results file not found: {results_blob_name}")
             return None
             

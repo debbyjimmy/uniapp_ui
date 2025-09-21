@@ -451,19 +451,25 @@ def download_and_combine_chunk_results(job_id: str, bucket_manager):
 def download_results(job_id: str, bucket_manager):
     """Download and display results"""
     try:
+        print(f"DEBUG: download_results called with job_id: {job_id}")
+        
         with st.spinner("⬇️ Downloading validation results..."):
             # Try to download combined results first, then fall back to chunk results
             st.info(f"🔍 Looking for single results file: {job_id}_results.csv")
             results_data = bucket_manager.download_results(job_id)
             
+            print(f"DEBUG: bucket_manager.download_results returned: {type(results_data)} - {results_data is not None}")
             st.info(f"📊 download_results returned: {type(results_data)} - {results_data is not None}")
             
             if not results_data:
                 # Try to download chunk results and combine them
+                print(f"DEBUG: Calling download_and_combine_chunk_results...")
                 st.info("🔄 Single results file not found. Looking for chunk results...")
                 results_data = download_and_combine_chunk_results(job_id, bucket_manager)
+                print(f"DEBUG: download_and_combine_chunk_results returned: {type(results_data)} - {results_data is not None}")
                 st.info(f"📊 download_and_combine_chunk_results returned: {type(results_data)} - {results_data is not None}")
             else:
+                print(f"DEBUG: Found single results file")
                 st.info("✅ Found single results file")
         
         if results_data:
@@ -567,7 +573,14 @@ def display_session_results(job_id: str):
         bucket_manager = get_bucket_manager('lead_search')
         
         with st.spinner("⬇️ Downloading validation results..."):
+            # Try to download combined results first, then fall back to chunk results
+            st.info(f"🔍 Looking for single results file: {job_id}_results.csv")
             results_data = bucket_manager.download_results(job_id)
+            
+            if not results_data:
+                # Try to download chunk results and combine them
+                st.info("🔄 Single results file not found. Looking for chunk results...")
+                results_data = download_and_combine_chunk_results(job_id, bucket_manager)
         
         if results_data:
             # Convert to DataFrame
